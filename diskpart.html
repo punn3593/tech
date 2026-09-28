@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>สื่อการเรียนรู้: จัดการดิสก์ระดับเทพด้วย Diskpart</title>
+    <!-- Google Fonts: Prompt -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --accent-color: #38bdf8;
+            --text-color: #f8fafc;
+            --text-muted: #94a3b8;
+            --success-color: #22c55e;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Prompt', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            padding: 20px 10px;
+        }
+
+        .container {
+            max-width: 950px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            padding: 20px 0;
+            border-bottom: 2px solid var(--card-bg);
+            margin-bottom: 25px;
+        }
+
+        h1 {
+            color: var(--accent-color);
+            margin-bottom: 8px;
+            font-size: 1.8rem;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 16px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        h2 {
+            color: var(--accent-color);
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .grid { grid-template-columns: 1fr; }
+        }
+
+        .comparison-box {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            padding: 18px;
+            border-left: 4px solid var(--accent-color);
+        }
+
+        .comparison-box ul {
+            padding-left: 20px;
+            margin-top: 10px;
+            font-size: 0.95rem;
+        }
+
+        /* --- Visual Disk Graphic --- */
+        .disk-visual-container {
+            background: #090d16;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .disk-bar-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .disk-bar {
+            height: 38px;
+            background: #1e293b;
+            border-radius: 8px;
+            display: flex;
+            overflow: hidden;
+            border: 2px solid #475569;
+            transition: all 0.5s ease;
+        }
+
+        .part-block {
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: bold;
+            color: #fff;
+            transition: all 0.5s ease;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+        }
+
+        /* --- Terminal Styling --- */
+        .terminal {
+            background-color: #050811;
+            color: #22c55e;
+            font-family: 'Consolas', 'Courier New', monospace;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.9);
+            border: 1px solid #1e293b;
+        }
+
+        .terminal-header {
+            color: var(--text-muted);
+            margin-bottom: 15px;
+            font-size: 0.85rem;
+            border-bottom: 1px solid #1e293b;
+            padding-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        #terminal-output {
+            max-height: 280px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        .cmd-input-container {
+            display: flex;
+            align-items: center;
+            margin-top: 15px;
+            background: rgba(255,255,255,0.03);
+            padding: 6px 12px;
+            border-radius: 6px;
+        }
+
+        .cmd-prompt {
+            color: #fff;
+            margin-right: 10px;
+            font-weight: bold;
+        }
+
+        input[type="text"] {
+            background: transparent;
+            border: none;
+            color: #38bdf8;
+            font-family: 'Consolas', monospace;
+            font-size: 1rem;
+            flex-grow: 1;
+            outline: none;
+        }
+
+        /* --- Steps List --- */
+        .step-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .step-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+        }
+
+        .step-number {
+            background: var(--accent-color);
+            color: #000;
+            font-weight: bold;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            font-size: 0.85rem;
+            flex-shrink: 0;
+        }
+
+        code {
+            background: #090d16;
+            color: var(--accent-color);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: monospace;
+            margin: 0 4px;
+        }
+
+        /* --- Quiz & Interactive Elements --- */
+        .quiz-option {
+            display: block;
+            width: 100%;
+            text-align: left;
+            background: rgba(255,255,255,0.05);
+            color: var(--text-color);
+            margin: 10px 0;
+            padding: 12px 18px;
+            border-radius: 8px;
+            border: 1px solid transparent;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+        }
+
+        .quiz-option:hover {
+            border-color: var(--accent-color);
+            background: rgba(56, 189, 248, 0.1);
+        }
+
+        .quiz-option.correct {
+            background: rgba(34, 197, 94, 0.2) !important;
+            border-color: var(--success-color) !important;
+            color: #4ade80;
+        }
+
+        .quiz-option.incorrect {
+            background: rgba(239, 68, 68, 0.2) !important;
+            border-color: var(--danger-color) !important;
+            color: #f87171;
+        }
+
+        .quiz-explanation {
+            margin-top: 15px;
+            padding: 12px;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.03);
+            font-size: 0.9rem;
+            display: none;
+        }
+
+        /* Tech Badges */
+        .badge {
+            font-size: 0.75rem;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-weight: 600;
+        }
+        .badge-danger { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+        .badge-success { background: rgba(34, 197, 94, 0.2); color: #4ade80; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1><i class="fa-solid fa-hard-drive"></i> สื่อการเรียนรู้: คืนชีพดิสก์ระดับเทพด้วย Diskpart</h1>
+        <p style="color: var(--text-muted)">เรียนรู้โครงสร้างการจัดเก็บข้อมูล เทคนิคเคลียร์พาร์ทิชันตกค้าง และทดลองใช้ Command Line จริง</p>
+    </header>
+
+    <!-- Section 1: GUI vs Command Line -->
+    <div class="card">
+        <h2><i class="fa-solid fa-scale-balanced"></i> 1. ทำไมต้องใช้ Diskpart แทน Disk Management?</h2>
+        <div class="grid">
+            <div class="comparison-box">
+                <h3 style="color: var(--warning-color)"><i class="fa-solid fa-mouse"></i> Disk Management (GUI)</h3>
+                <ul>
+                    <li>เหมาะกับการใช้งานทั่วไป ผ่านหน้าต่างกราฟิกคลิกง่าย</li>
+                    <li><strong style="color:#f87171">ข้อจำกัดหลัก:</strong> ไม่สามารถลบพาร์ทิชันระบบบางประเภทได้ เช่น EFI System, OEM Recovery หรือพาร์ทิชันข้ามระบบอย่าง Linux (EXT4)</li>
+                    <li>ไม่สามารถข้ามการล็อกความปลอดภัยของ Windows ได้</li>
+                </ul>
+            </div>
+            <div class="comparison-box" style="border-left-color: var(--success-color)">
+                <h3 style="color: var(--accent-color)"><i class="fa-solid fa-terminal"></i> Diskpart (Command Line)</h3>
+                <ul>
+                    <li>เครื่องมือระดับล่าง สั่งงานตรงถึงดิสก์คอนโทรลเลอร์</li>
+                    <li><strong style="color:#4ade80">คำสั่งเด็ด (clean):</strong> สั่งเขียนทับลบโครงสร้าง MBR/GPT และตารางพาร์ทิชันทิ้ง 100% ในทันที</li>
+                    <li>แก้ปัญหาความจุ SSD หาย, ไดรฟ์ติด Read-Only หรือพาร์ทิชันขยะได้อย่างเด็ดขาด</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 2: Deep Knowledge (MBR vs GPT) -->
+    <div class="card">
+        <h2><i class="fa-solid fa-book-bookmark"></i> 2. ความรู้เสริม: MBR vs GPT & NTFS vs FAT32</h2>
+        <div class="grid">
+            <div style="background: rgba(255,255,255,0.02); padding:15px; border-radius:10px;">
+                <h4 style="color:var(--accent-color); margin-bottom:8px;"><i class="fa-solid fa-database"></i> รูปแบบตารางดิสก์ (Partition Table)</h4>
+                <p style="font-size:0.88rem; color:var(--text-muted);">
+                    • <b>MBR (Master Boot Record):</b> รูปแบบเก่า รองรับความจุสูงสุด 2 TB และสร้าง Primary Partition ได้ไม่เกิน 4 พาร์ทิชัน<br>
+                    • <b>GPT (GUID Partition Table):</b> รูปแบบใหม่ รองรับความจุระดับ TB/PB ไม่จำกัดพาร์ทิชัน และรองรับระบบบูต UEFI
+                </p>
+            </div>
+            <div style="background: rgba(255,255,255,0.02); padding:15px; border-radius:10px;">
+                <h4 style="color:var(--accent-color); margin-bottom:8px;"><i class="fa-solid fa-file-code"></i> ระบบไฟล์ (File System)</h4>
+                <p style="font-size:0.88rem; color:var(--text-muted);">
+                    • <b>NTFS:</b> มาตรฐานของ Windows รองรับไฟล์ขนาดใหญ่เกิน 4GB และมีระบบความปลอดภัยสูง<br>
+                    • <b>FAT32 / exFAT:</b> เหมาะกับแฟลชไดรฟ์/อุปกรณ์พกพา รองรับหลายระบบปฏิบัติการ (Windows, Mac, Android)
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 3: Step-by-Step Commands -->
+    <div class="card">
+        <h2><i class="fa-solid fa-list-check"></i> 3. ลำดับคำสั่งการกู้คืนและล้างดิสก์</h2>
+        <ul class="step-list">
+            <li class="step-item"><span class="step-number">1</span> <code>diskpart</code> - เปิดโปรแกรมจัดการดิสก์ผ่าน Command Prompt</li>
+            <li class="step-item"><span class="step-number">2</span> <code>list disk</code> - ตรวจสอบหมายเลขดิสก์ทั้งหมดที่เชื่อมต่อในเครื่อง</li>
+            <li class="step-item"><span class="step-number">3</span> <code>select disk X</code> - เลือกดิสก์เป้าหมายที่ต้องการจัดการ (ตรวจสอบให้แน่ใจ!)</li>
+            <li class="step-item"><span class="step-number">4</span> <code>clean</code> - ล้างตารางพาร์ทิชัน ข้อมูล และความผิดพลาดทั้งหมดทิ้ง</li>
+            <li class="step-item"><span class="step-number">5</span> <code>convert gpt</code> - แปลงโครงสร้างดิสก์ให้เป็นมาตรฐาน GPT สมัยใหม่</li>
+            <li class="step-item"><span class="step-number">6</span> <code>create partition primary</code> - สร้างพาร์ทิชันหลักเต็มพื้นที่ดิสก์</li>
+            <li class="step-item"><span class="step-number">7</span> <code>format fs=ntfs quick</code> - ฟอร์แมตรูปแบบ NTFS แบบรวดเร็ว</li>
+            <li class="step-item"><span class="step-number">8</span> <code>assign</code> - กำหนดไดรฟ์ (เช่น Drive D:, E:) เพื่อเริ่มใช้งานบน Windows</li>
+        </ul>
+    </div>
+
+    <!-- Section 4: Interactive Simulator & Visualizer -->
+    <div class="card">
+        <h2><i class="fa-solid fa-flask"></i> 4. ห้องทดลอง: ลองพิมพ์คำสั่งจริงพร้อมดูผลลัพธ์ Visual!</h2>
+        <p style="color: var(--text-muted); font-size:0.9rem; margin-bottom:12px;">
+            <b>ภารกิจ:</b> ล้างดิสก์ SSD 120GB (Disk 1) ที่มีพาร์ทิชันขยะลบลบไม่ได้ แล้วฟอร์แมตสร้างใหม่!
+        </p>
+
+        <!-- Visual Disk Progress Bar -->
+        <div class="disk-visual-container">
+            <div class="disk-bar-label">
+                <span><i class="fa-solid fa-hard-drive"></i> สถานะดิสก์จำลอง: <b>Disk 1 (120 GB SSD)</b></span>
+                <span id="disk-status-text" class="badge badge-danger">มีพาร์ทิชันตกค้าง/ชำรุด</span>
+            </div>
+            <div class="disk-bar" id="disk-visual-bar">
+                <div class="part-block" style="width: 30%; background: #ef4444;" title="Unremovable Linux Partition">Linux (36GB)</div>
+                <div class="part-block" style="width: 20%; background: #f59e0b;" title="EFI Boot Partition">EFI (24GB)</div>
+                <div class="part-block" style="width: 50%; background: #64748b;" title="Unallocated Space">RAW (60GB)</div>
+            </div>
+        </div>
+
+        <!-- Terminal Box -->
+        <div class="terminal">
+            <div class="terminal-header">
+                <span><i class="fa-solid fa-square-poll-horizontal"></i> Administrator: Command Prompt - diskpart</span>
+                <span>Type <b>help</b> for tips</span>
+            </div>
+            <div id="terminal-output">Microsoft DiskPart version 10.0.26100
+Copyright (C) Microsoft Corporation.
+On computer: LAB-TEACHER
+
+เริ่มแรก พิมพ์ <b>list disk</b> เพื่อดูรายการดิสก์ทั้งหมดในเครื่อง</div>
+            <div class="cmd-input-container">
+                <span class="cmd-prompt">DISKPART&gt;</span>
+                <input type="text" id="cmd-input" placeholder="พิมพ์คำสั่งที่นี่..." autofocus autocomplete="off">
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 5: Quiz System -->
+    <div class="card">
+        <h2><i class="fa-solid fa-graduation-cap"></i> 5. คลังข้อสอบวัดความรู้ (Interactive Quiz)</h2>
+        <div id="quiz-container">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <span style="font-size:0.9rem; color:var(--accent-color); font-weight:bold;" id="quiz-progress">ข้อที่ 1 / 3</span>
+                <span style="font-size:0.9rem; color:var(--text-muted);">คะแนนสะสม: <b id="quiz-score" style="color:var(--success-color);">0</b> คะแนน</span>
+            </div>
+            <h3 id="quiz-question" style="font-size:1.05rem; font-weight:500; margin-bottom:12px;">...</h3>
+            <div id="quiz-options"></div>
+            <div id="quiz-explanation" class="quiz-explanation"></div>
+            <button id="next-quiz-btn" style="margin-top:15px; display:none;" onclick="loadNextQuestion()">ข้อถัดไป <i class="fa-solid fa-arrow-right"></i></button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- Simulator Logic ---
+    const cmdInput = document.getElementById('cmd-input');
+    const terminalOutput = document.getElementById('terminal-output');
+    const diskBar = document.getElementById('disk-visual-bar');
+    const diskStatusText = document.getElementById('disk-status-text');
+
+    let currentStep = 0;
+    let selectedDisk = null;
+
+    cmdInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            const rawVal = cmdInput.value.trim();
+            const val = rawVal.toLowerCase();
+            cmdInput.value = '';
+            
+            if (!rawVal) return;
+
+            let response = '';
+
+            // Handle Global Commands
+            if (val === 'cls') {
+                terminalOutput.innerHTML = '';
+                return;
+            }
+            if (val === 'help') {
+                response = `\nคำสั่งที่ใช้งานได้ในแล็บนี้:\n - list disk : แสดงรายการดิสก์\n - select disk 1 : เลือก Disk 1\n - clean : ล้างข้อมูลและพาร์ทิชันทั้งหมด\n - convert gpt : แปลงโครงสร้างเป็น GPT\n - create partition primary : สร้างพาร์ทิชันหลัก\n - format fs=ntfs quick : ฟอร์แมตระบบไฟล์ NTFS\n - assign : กำหนดตัวอักษรไดรฟ์\n - cls : ล้างหน้าจอ Terminal`;
+                printTerminal(rawVal, response);
+                return;
+            }
+
+            // Step-by-Step Workflow Simulation
+            if (currentStep === 0 && val === 'list disk') {
+                response = `\nDisk ###  Status         Size     Free     Dyn  Gpt\n--------  -------------  -------  -------  ---  ---\nDisk 0    Online          476 GB  1024 KB        *\nDisk 1    Online          120 GB   120 GB        *\n\n[แนะนำ]: พิมพ์ "select disk 1" เพื่อเลือกดิสก์ SSD 120GB`;
+                currentStep = 1;
+            } 
+            else if (currentStep === 1 && val === 'select disk 1') {
+                selectedDisk = 1;
+                response = `\nDisk 1 is now the selected disk.\n\n[แนะนำ]: พิมพ์ "clean" เพื่อล้างตารางพาร์ทิชันเสียทิ้งทั้งหมด`;
+                currentStep = 2;
+            } 
+            else if (currentStep === 2 && val === 'clean') {
+                response = `\nDiskPart succeeded in cleaning the disk.\n\n[แนะนำ]: พิมพ์ "convert gpt" เพื่อกำหนดรูปแบบตารางดิสก์เป็น GPT`;
+                currentStep = 3;
+                // Update Visual Bar: Clean state
+                diskBar.innerHTML = `<div class="part-block" style="width: 100%; background: #334155;" title="Unallocated Space">Unallocated Space (120GB - สภาพว่างเปล่า)</div>`;
+                diskStatusText.className = "badge badge-danger";
+                diskStatusText.innerText = "ล้างข้อมูลแล้ว (ยังใช้งานไม่ได้)";
+            } 
+            else if (currentStep === 3 && val === 'convert gpt') {
+                response = `\nDiskPart successfully converted the selected disk to GPT format.\n\n[แนะนำ]: พิมพ์ "create partition primary" เพื่อสร้างพาร์ทิชันหลัก`;
+                currentStep = 4;
+            }
+            else if (currentStep === 4 && val === 'create partition primary') {
+                response = `\nDiskPart succeeded in creating the specified partition.\n\n[แนะนำ]: พิมพ์ "format fs=ntfs quick" เพื่อฟอร์แมตดิสก์`;
+                currentStep = 5;
+                // Update Visual Bar: Partition created but unformatted
+                diskBar.innerHTML = `<div class="part-block" style="width: 100%; background: #f59e0b;" title="RAW Partition">RAW Partition (120GB - รอการฟอร์แมต)</div>`;
+                diskStatusText.className = "badge badge-danger";
+                diskStatusText.innerText = "สร้าง Partition แล้ว (รอกำหนด File System)";
+            } 
+            else if (currentStep === 5 && (val === 'format fs=ntfs quick' || val === 'format fs=ntfs')) {
+                response = `\n  100 percent completed\nDiskPart successfully formatted the volume.\n\n[แนะนำ]: พิมพ์ "assign" เพื่อระบุตัวอักษรไดรฟ์เข้าสู่ระบบ Windows`;
+                currentStep = 6;
+                // Update Visual Bar: Formatted
+                diskBar.innerHTML = `<div class="part-block" style="width: 100%; background: #0284c7;" title="NTFS Volume">NTFS Volume (120GB - ฟอร์แมตเสร็จสิ้น)</div>`;
+                diskStatusText.innerText = "ฟอร์แมต NTFS สำเร็จ (รอ Assign ไดรฟ์)";
+            } 
+            else if (currentStep === 6 && val === 'assign') {
+                response = `\nDiskPart successfully assigned the drive letter or mount point.\n\n🎉 [ยินดีด้วย!]: คุณสำเร็จภารกิจชุบชีวิต SSD และพร้อมใช้งานในระบบ Windows แล้ว!`;
+                currentStep = 7;
+                // Update Visual Bar: Complete!
+                diskBar.innerHTML = `<div class="part-block" style="width: 100%; background: #22c55e;" title="New Volume (E:)">New Volume E: (120GB NTFS - Ready)</div>`;
+                diskStatusText.className = "badge badge-success";
+                diskStatusText.innerText = "สมบูรณ์! ไดรฟ์ E: พร้อมใช้งาน";
+            } 
+            else {
+                response = `\n[ข้อผิดพลาด]: คำสั่งไม่ถูกต้อง หรือกดพิมพ์ข้ามขั้นตอน\nคำสั่งที่ควรพิมพ์ในขั้นนี้คือการปฏิบัติตามคำแนะนำ หรือพิมพ์ "help" เพื่อดูคำสั่งทั้งหมด`;
+            }
+
+            printTerminal(rawVal, response);
+        }
+    });
+
+    function printTerminal(input, output) {
+        terminalOutput.innerHTML += `\nDISKPART> ${input}` + output;
+        terminalOutput.scrollTop = terminalOutput.scrollHeight;
+    }
+
+    // --- Interactive Quiz Bank Logic ---
+    const quizData = [
+        {
+            q: "คำสั่งใดใน Diskpart ที่ใช้สำหรับล้างพาร์ทิชันและโครงสร้างตารางดิสก์เดิมออกทั้งหมดทันที?",
+            options: [
+                { text: "A) format fs=ntfs", correct: false },
+                { text: "B) clean", correct: true },
+                { text: "C) assign", correct: false },
+                { text: "D) convert gpt", correct: false }
+            ],
+            exp: "คำสั่ง <b>clean</b> จะทำหน้าที่ลบรหัสพาร์ทิชัน MBR/GPT และข้อมูลส่วนหัวของดิสก์ทิ้งทั้งหมดทันที ทำให้ดิสก์กลับไปสู่สถานะ Unallocated"
+        },
+        {
+            q: "หากต้องการสร้างพาร์ทิชันหลักเต็มพื้นที่ความจุของดิสก์ ต้องใช้คำสั่งใด?",
+            options: [
+                { text: "A) create partition primary", correct: true },
+                { text: "B) make partition full", correct: false },
+                { text: "C) add volume primary", correct: false },
+                { text: "D) new disk partition", correct: false }
+            ],
+            exp: "คำสั่ง <b>create partition primary</b> เป็นไวยากรณ์มาตรฐานของ Diskpart ในการสร้าง Primary Partition"
+        },
+        {
+            q: "เหตุใดเราจึงใส่คำว่า 'quick' ต่อท้ายคำสั่ง format (เช่น format fs=ntfs quick)?",
+            options: [
+                { text: "A) เพื่อตรวจสอบ Bad Sector ของดิสก์อย่างละเอียด", correct: false },
+                { text: "B) เพื่อข้ามการลบข้อมูลจริง ทำให้ฟอร์แมตเสร็จรวดเร็วภายในไม่กี่วินาที", correct: true },
+                { text: "C) เพื่อแปลงเป็นรูปแบบไฟล์ FAT32 โดยอัตโนมัติ", correct: false },
+                { text: "D) เพื่อบีบอัดไฟล์ในดิสก์ให้ประหยัดพื้นที่", correct: false }
+            ],
+            exp: "ตัวเลือก <b>quick</b> คือการฟอร์แมตแบบเร็ว โดยระบบจะลบเพียงตารางดรรชนีชี้ไฟล์เท่านั้น ไม่ได้สแกนอ่านเขียนตรวจเช็กทุก Sector เหมือนการฟอร์แมตแบบเต็ม"
+        }
+    ];
+
+    let currentQuizIndex = 0;
+    let score = 0;
+
+    function renderQuiz() {
+        const quiz = quizData[currentQuizIndex];
+        document.getElementById('quiz-progress').innerText = `ข้อที่ ${currentQuizIndex + 1} / ${quizData.length}`;
+        document.getElementById('quiz-question').innerText = quiz.q;
+        
+        const optionsContainer = document.getElementById('quiz-options');
+        optionsContainer.innerHTML = '';
+
+        const expBox = document.getElementById('quiz-explanation');
+        expBox.style.display = 'none';
+        document.getElementById('next-quiz-btn').style.display = 'none';
+
+        quiz.options.forEach((opt, idx) => {
+            const btn = document.createElement('button');
+            btn.className = 'quiz-option';
+            btn.innerText = opt.text;
+            btn.onclick = () => selectQuizAnswer(idx, opt.correct);
+            optionsContainer.appendChild(btn);
+        });
+    }
+
+    function selectQuizAnswer(selectedIndex, isCorrect) {
+        const quiz = quizData[currentQuizIndex];
+        const buttons = document.querySelectorAll('.quiz-option');
+
+        buttons.forEach((btn, idx) => {
+            btn.disabled = true;
+            if (quiz.options[idx].correct) {
+                btn.classList.add('correct');
+            } else if (idx === selectedIndex) {
+                btn.classList.add('incorrect');
+            }
+        });
+
+        if (isCorrect) {
+            score += 10;
+            document.getElementById('quiz-score').innerText = score;
+        }
+
+        const expBox = document.getElementById('quiz-explanation');
+        expBox.style.display = 'block';
+        expBox.innerHTML = `<b>คำอธิบาย:</b> ${quiz.exp}`;
+
+        if (currentQuizIndex < quizData.length - 1) {
+            document.getElementById('next-quiz-btn').style.display = 'inline-block';
+        } else {
+            const nextBtn = document.getElementById('next-quiz-btn');
+            nextBtn.innerText = '🎉 ทำแบบทดสอบครบแล้ว!';
+            nextBtn.style.display = 'inline-block';
+            nextBtn.disabled = true;
+        }
+    }
+
+    function loadNextQuestion() {
+        currentQuizIndex++;
+        renderQuiz();
+    }
+
+    // Initialize Quiz
+    renderQuiz();
+</script>
+
+</body>
+</html>
